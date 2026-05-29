@@ -18,3 +18,11 @@ fi
 
 # Run the full autonomous cycle
 python3 scripts/daily_cycle.py 2>&1
+
+# Auto-commit changes after each cycle
+cd /home/hermes/projects/picsou-alpaca
+if [ -n "$(git status --porcelain -- scripts/ config/ crons/ tests/)" ]; then
+  git add scripts/ config/ crons/ tests/
+  git commit -m "auto: $(date +%Y-%m-%d_%H:%M) cycle update" --quiet
+  git push origin main --quiet 2>/dev/null || true
+fi
