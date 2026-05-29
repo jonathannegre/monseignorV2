@@ -1,0 +1,8 @@
+.secrets/
+__pycache__/
+*.pyc
+.env
+journal/
+reports/
+data/
+logs/
