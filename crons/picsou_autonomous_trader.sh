@@ -5,6 +5,9 @@ set -euo pipefail
 cd /home/hermes/projects/monseignor
 set -a
 source .secrets/alpaca-paper.env
+if [ -f .secrets/finnhub.env ]; then
+  source .secrets/finnhub.env
+fi
 set +a
 
 # Check if market is open

@@ -53,6 +53,12 @@ class NewsItem:
     published_at: dt.datetime | None = None
     url: str = ""
     summary: str = ""
+    event_type: str = ""
+    sentiment: float | None = None
+    relevance: float | None = None
+    materiality: float | None = None
+    source_tier: int | None = None
+    metadata: Mapping[str, Any] = dataclasses.field(default_factory=dict)
 
     @classmethod
     def from_mapping(cls, raw: Mapping[str, Any]) -> "NewsItem":
@@ -70,7 +76,31 @@ class NewsItem:
             published_at=parsed,
             url=str(raw.get("url", "")),
             summary=str(raw.get("summary", "")),
+            event_type=str(raw.get("event_type", "")),
+            sentiment=_optional_float(raw.get("sentiment")),
+            relevance=_optional_float(raw.get("relevance")),
+            materiality=_optional_float(raw.get("materiality")),
+            source_tier=_optional_int(raw.get("source_tier")),
+            metadata=raw.get("metadata", {}) if isinstance(raw.get("metadata", {}), Mapping) else {},
         )
+
+
+def _optional_float(value: Any) -> float | None:
+    try:
+        if value in (None, ""):
+            return None
+        return float(value)
+    except Exception:
+        return None
+
+
+def _optional_int(value: Any) -> int | None:
+    try:
+        if value in (None, ""):
+            return None
+        return int(value)
+    except Exception:
+        return None
 
 
 class CatalystAgent:
@@ -133,13 +163,23 @@ class CatalystAgent:
         headlines: list[dict[str, Any]] = []
         seen_headlines: set[str] = set()
         novelty_bonus = 0.0
+        structured_event_hits: list[str] = []
+        hard_veto_events = {
+            "fraud_investigation",
+            "sec_probe",
+            "guidance_cut",
+            "earnings_miss",
+            "offering_dilution",
+            "bankruptcy",
+            "analyst_downgrade",
+        }
         for item in items:
             text = f"{item.headline} {item.summary}".lower()
             source = item.source.lower()
             if item.headline.lower() not in seen_headlines:
                 novelty_bonus += 0.15
                 seen_headlines.add(item.headline.lower())
-            trusted = any(src in source for src in TRUSTED_SOURCES)
+            trusted = any(src in source for src in TRUSTED_SOURCES) or item.source_tier == 1 or "finnhub" in source
             trusted_hits += 1 if trusted else 0
             for term, weight in POSITIVE_TERMS.items():
                 if term in text:
@@ -147,14 +187,26 @@ class CatalystAgent:
             for term, weight in NEGATIVE_TERMS.items():
                 if term in text:
                     negative += weight
-            material_hits += 1 if any(term in text for term in MATERIAL_TERMS) else 0
-            headlines.append({"headline": item.headline, "source": item.source, "url": item.url})
+            if item.sentiment is not None:
+                if item.sentiment > 0:
+                    positive += min(item.sentiment * 1.6, 1.6)
+                else:
+                    negative += min(abs(item.sentiment) * 1.8, 1.8)
+            if item.materiality is not None:
+                material_hits += 1 if item.materiality >= 0.5 else 0
+                positive += max(0.0, item.materiality - 0.5) * 0.6 if (item.sentiment or 0) >= 0 else 0.0
+                negative += max(0.0, item.materiality - 0.5) * 0.8 if (item.sentiment or 0) < 0 else 0.0
+            else:
+                material_hits += 1 if any(term in text for term in MATERIAL_TERMS) else 0
+            if item.event_type:
+                structured_event_hits.append(item.event_type)
+            headlines.append({"headline": item.headline, "source": item.source, "url": item.url, "event_type": item.event_type})
 
         source_bonus = min(trusted_hits * 0.25, 0.75)
         material_bonus = min(material_hits * 0.35, 1.0)
         raw_score = 5.0 + positive + source_bonus + material_bonus + novelty_bonus - negative * 1.4
         score = round(max(0.0, min(10.0, raw_score)), 2)
-        negative_veto = negative >= 2.0 and negative > positive
+        negative_veto = (negative >= 2.0 and negative > positive) or any(event in hard_veto_events for event in structured_event_hits)
         status = "negative_news_veto" if negative_veto else "positive_catalyst" if score >= 7.0 else "mixed_or_weak_catalyst"
         summary = "; ".join(h["headline"] for h in headlines[:3])
         return {
@@ -169,6 +221,7 @@ class CatalystAgent:
             "negative_signal": round(negative, 2),
             "material_hits": material_hits,
             "trusted_source_hits": trusted_hits,
+            "structured_event_hits": structured_event_hits,
             "headlines": headlines,
         }
 

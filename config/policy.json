@@ -142,7 +142,10 @@
   "catalyst_agent": {
     "news_cache_path": "data/news_cache.jsonl",
     "negative_news_veto": true,
-    "max_news_age_hours": 72
+    "max_news_age_hours": 72,
+    "provider": "finnhub",
+    "finnhub_lookback_days": 7,
+    "finnhub_sleep_seconds": 0.25
   },
   "position_manager": {
     "enabled": true,

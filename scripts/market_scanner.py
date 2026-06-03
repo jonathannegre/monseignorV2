@@ -23,8 +23,10 @@ from typing import Any, Iterable
 
 try:
     from .catalyst_agent import CatalystAgent, score_catalysts_for_symbols
+    from .finnhub_catalyst_feed import fetch_and_write_cache
 except ImportError:
     from catalyst_agent import CatalystAgent, score_catalysts_for_symbols
+    from finnhub_catalyst_feed import fetch_and_write_cache
 
 BASE = pathlib.Path(__file__).resolve().parents[1]
 POLICY_PATH = BASE / "config" / "policy.json"
@@ -528,8 +530,27 @@ def run_live_scan() -> dict[str, Any]:
     quotes = client.latest_quotes(symbols, config.feed)
     initial = scan_market_universe(universe_assets, bars, quotes, config, account_cash=account_cash, catalyst_agent=catalyst_agent)
     candidate_symbols = [item["symbol"] for item in initial.get("market_scanner", {}).get("candidates", [])]
+    catalyst_refresh = {"provider": "finnhub", "status": "skipped", "reason": "no_candidate_symbols"}
+    finnhub_token = os.environ.get("FINNHUB_API_KEY", "")
+    if candidate_symbols and finnhub_token:
+        try:
+            catalyst_refresh = fetch_and_write_cache(
+                candidate_symbols,
+                token=finnhub_token,
+                cache_path=news_path,
+                lookback_days=int(policy.get("catalyst_agent", {}).get("finnhub_lookback_days", 7)),
+                sleep_seconds=float(policy.get("catalyst_agent", {}).get("finnhub_sleep_seconds", 0.25)),
+            )
+            catalyst_refresh["provider"] = "finnhub"
+            catalyst_refresh["status"] = "refreshed"
+            catalyst_agent = CatalystAgent.from_json_file(news_path)
+        except Exception as exc:
+            catalyst_refresh = {"provider": "finnhub", "status": "error", "reason": str(exc)[:200]}
+    elif candidate_symbols:
+        catalyst_refresh = {"provider": "finnhub", "status": "skipped", "reason": "missing_FINNHUB_API_KEY"}
     historical = client.historical_daily_bars(candidate_symbols, config.feed, limit=120) if candidate_symbols else {}
     result = scan_market_universe(universe_assets, bars, quotes, config, historical_bars=historical, account_cash=account_cash, catalyst_agent=catalyst_agent)
+    result["catalyst_refresh"] = catalyst_refresh
     result["account_snapshot"] = {"cash": round(account_cash, 2), "paper_endpoint": client.trading_base_url}
     return result
 
