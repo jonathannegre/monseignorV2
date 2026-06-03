@@ -127,7 +127,9 @@
     "max_sector_exposure_pct": 45.0,
     "max_new_orders": 5,
     "regime": "risk_on",
-    "allow_high_conviction_concentration": true
+    "allow_high_conviction_concentration": true,
+    "resize_to_caps": true,
+    "min_resized_notional_usd": 100.0
   },
   "intraday_execution": {
     "enabled": true,

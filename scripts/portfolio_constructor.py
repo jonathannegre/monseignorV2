@@ -28,6 +28,25 @@ def _notional(proposal: Mapping[str, Any]) -> float:
     return _f(order.get("qty")) * _f(order.get("limit_price"))
 
 
+def _resize_order(row: dict[str, Any], target_notional: float) -> dict[str, Any]:
+    """Return a proposal resized to target_notional while keeping entry/stop/TP intact."""
+    resized = dict(row)
+    order = dict(resized.get("order_intent", {})) if isinstance(resized.get("order_intent"), Mapping) else {}
+    limit_price = _f(order.get("limit_price"))
+    if limit_price > 0:
+        order["qty"] = round(target_notional / limit_price, 4)
+        resized["order_intent"] = order
+    rationale = dict(resized.get("agent_rationale", {})) if isinstance(resized.get("agent_rationale"), Mapping) else {}
+    cash = dict(rationale.get("cash", {})) if isinstance(rationale.get("cash"), Mapping) else {}
+    cash["suggested_notional_usd"] = round(target_notional, 2)
+    cash["portfolio_constructor_resized"] = True
+    rationale["cash"] = cash
+    resized["agent_rationale"] = rationale
+    resized["requested_notional_usd"] = round(target_notional, 2)
+    resized["portfolio_constructor_resized"] = True
+    return resized
+
+
 def _sector(proposal: Mapping[str, Any]) -> str:
     explicit = proposal.get("sector") or proposal.get("asset_sector")
     if explicit:
@@ -48,6 +67,8 @@ def construct_portfolio(proposals: list[Mapping[str, Any]], account: Mapping[str
     cash = max(_f(account.get("cash")), 0.0)
     max_sector_pct = _f(cfg.get("max_sector_exposure_pct"), 100.0)
     max_new_orders = int(cfg.get("max_new_orders", policy.get("risk_mode", {}).get("max_open_positions", 10)) or 10)
+    resize_to_caps = bool(cfg.get("resize_to_caps", False))
+    min_resized_notional = _f(cfg.get("min_resized_notional_usd"), 50.0)
     regime = str(cfg.get("regime", "risk_on" if policy.get("autonomous_mode") else "neutral"))
     regime_budget_pct = {"risk_off": 35.0, "neutral": 65.0, "risk_on": _f(policy.get("risk_mode", {}).get("max_total_exposure_pct"), 85.0)}.get(regime, 65.0)
     total_budget = min(cash, portfolio_value * regime_budget_pct / 100.0)
@@ -76,6 +97,12 @@ def construct_portfolio(proposals: list[Mapping[str, Any]], account: Mapping[str
         if requested <= 0:
             rejected.append({"symbol": symbol, "reason": "zero_notional", "conviction_score": row["conviction_score"]})
             continue
+        sector_remaining = max(sector_cap - sector_usage.get(sector, 0.0), 0.0)
+        budget_remaining = max(total_budget - total_used, 0.0)
+        clipped = min(requested, sector_remaining, budget_remaining)
+        if resize_to_caps and clipped < requested and clipped >= min_resized_notional:
+            row = _resize_order(row, clipped)
+            requested = clipped
         if sector_usage.get(sector, 0.0) + requested > sector_cap:
             rejected.append({"symbol": symbol, "reason": f"sector_cap:{sector}", "conviction_score": row["conviction_score"], "requested_notional_usd": round(requested, 2)})
             continue
