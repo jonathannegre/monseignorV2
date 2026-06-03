@@ -77,12 +77,12 @@
   "daily_report_time_cest": "08:00",
   "daily_report_channel": "whatsapp",
   "adaptive_meta": {
-    "last_adaptation_ts": "2026-06-02T05:04:33.022309",
+    "last_adaptation_ts": "2026-06-03T05:08:21.206320",
     "start_equity": 10015.0,
-    "high_water_mark": 10391.67,
-    "realized_return_pct": 2.93,
-    "drawdown_pct": -0.8,
-    "progress_gap_pct": 7.07,
+    "high_water_mark": 10484.08,
+    "realized_return_pct": 4.68,
+    "drawdown_pct": 0.0,
+    "progress_gap_pct": 5.32,
     "action": "increase_aggression_behind_target"
   },
   "setup_rotation": {
