@@ -12,6 +12,11 @@ import json
 import pathlib
 from typing import Any, Dict, Iterable, List, Mapping, Optional
 
+try:
+    from .portfolio_constructor import construct_portfolio
+except ImportError:
+    from portfolio_constructor import construct_portfolio
+
 DEFAULT_WATCHLIST = [
     {
         "symbol": "SPY",
@@ -196,21 +201,28 @@ def _evaluate_candidates(
             continue
 
         confidence = round(_as_float(candidate.get("confidence"), (technical_score + catalyst_score) / 2.0), 2)
+        catalyst_allowed = True
+        catalyst_analysis = candidate.get("catalyst_analysis") if isinstance(candidate.get("catalyst_analysis"), Mapping) else {}
+        if catalyst_analysis and catalyst_analysis.get("trade_allowed") is False:
+            catalyst_allowed = False
+        if str(candidate.get("catalyst_status", catalyst_analysis.get("catalyst_status", ""))) == "negative_news_veto":
+            catalyst_allowed = False
         if setup and setup in boosted_setups:
             confidence = round(min(10.0, confidence + 0.35), 2)
             risk_reward = round(risk_reward + 0.05, 2)
 
         cash_plan = _cash_allocation(policy, account, candidate)
         has_complete_plan = all(_as_float(candidate.get(k)) > 0 for k in ("entry", "stop_loss", "take_profit"))
-        risk_ok = confidence >= min_confidence and risk_reward >= min_rr and cash_plan["suggested_qty"] > 0 and has_complete_plan
+        risk_ok = catalyst_allowed and confidence >= min_confidence and risk_reward >= min_rr and cash_plan["suggested_qty"] > 0 and has_complete_plan
 
         technical.append({"symbol": symbol, "score": technical_score, "view": candidate.get("trend", "n/a"), "setup": candidate.get("setup"), "entry": candidate.get("entry"), "stop_loss": candidate.get("stop_loss"), "take_profit": candidate.get("take_profit")})
-        catalyst.append({"symbol": symbol, "score": catalyst_score, "status": candidate.get("catalyst_status", "no_verified_catalyst"), "view": candidate.get("catalyst", "n/a")})
+        catalyst.append({"symbol": symbol, "score": catalyst_score, "status": candidate.get("catalyst_status", catalyst_analysis.get("catalyst_status", "no_verified_catalyst")), "view": candidate.get("catalyst", "n/a"), "trade_allowed": catalyst_allowed})
         risk.append({"symbol": symbol, "risk_reward": risk_reward, "confidence": confidence, "accepted": risk_ok, "max_loss_if_stop_hit": cash_plan.get("max_loss_if_stop_hit", 0.0)})
         cash.append({"symbol": symbol, **cash_plan})
 
         committee_vote = "propose" if risk_ok else "reject"
-        committee.append({"symbol": symbol, "vote": committee_vote, "reason": "score/risk/cash filters"})
+        reject_reason = "negative_catalyst_veto" if not catalyst_allowed else "score/risk/cash filters"
+        committee.append({"symbol": symbol, "vote": committee_vote, "reason": "score/risk/cash filters" if committee_vote == "propose" else reject_reason})
         if committee_vote != "propose":
             continue
 
@@ -263,6 +275,8 @@ def compose_trade_validation_pipeline(
     blocked = gate["status"] == "blocked"
     candidates = DEFAULT_WATCHLIST if watchlist is None else watchlist
     agent_outputs, proposals = ({}, []) if blocked else _evaluate_candidates(policy, account, candidates)
+    portfolio_plan = construct_portfolio(proposals, account, policy) if not blocked else {"agent": "Portfolio Construction Agent", "selected_count": 0, "selected_proposals": [], "rejected_proposals": []}
+    proposals = portfolio_plan.get("selected_proposals", proposals)
 
     agent_outputs.setdefault(
         "Cash Control Agent",
@@ -274,6 +288,7 @@ def compose_trade_validation_pipeline(
         },
     )
     agent_outputs["Compliance & Kill-Switch Agent"] = gate
+    agent_outputs["Portfolio Construction Agent"] = portfolio_plan
     agent_outputs["CEO Agent"] = {
         "decision": "journal_only_no_execution",
         "next_action": "validation manuelle explicite requise avant toute exécution",

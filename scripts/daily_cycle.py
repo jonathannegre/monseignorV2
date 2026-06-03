@@ -10,6 +10,7 @@ try:
     from .market_scanner import run_live_scan
     from .trade_validation_pipeline import append_trade_validation_journal, compose_trade_validation_pipeline
     from .order_executor import execute_proposals
+    from .decision_replay import build_decision_snapshot, write_decision_snapshot
 except ImportError:  # script execution: python3 scripts/daily_cycle.py
     SCRIPT_DIR = pathlib.Path(__file__).resolve().parent
     if str(SCRIPT_DIR) not in sys.path:
@@ -17,6 +18,7 @@ except ImportError:  # script execution: python3 scripts/daily_cycle.py
     from market_scanner import run_live_scan
     from trade_validation_pipeline import append_trade_validation_journal, compose_trade_validation_pipeline
     from order_executor import execute_proposals
+    from decision_replay import build_decision_snapshot, write_decision_snapshot
 
 BASE = pathlib.Path(__file__).resolve().parents[1]
 JOURNAL = BASE / 'journal' / 'events.jsonl'
@@ -569,6 +571,19 @@ def main():
         summary['execution'] = {'orders_sent': 0, 'reason': 'no_proposals_or_not_authorized'}
 
     write_cycle_outputs(summary, now)
+    portfolio_plan = summary.get('trade_validation', {}).get('agent_outputs', {}).get('Portfolio Construction Agent', {})
+    decision_snapshot = build_decision_snapshot(
+        timestamp=now.isoformat(),
+        account=account,
+        policy=policy,
+        market_scan=market_scan,
+        trade_validation=summary.get('trade_validation'),
+        portfolio_plan=portfolio_plan,
+        execution=summary.get('execution'),
+        position_management=summary.get('stop_renewal'),
+    )
+    decision_path = write_decision_snapshot(decision_snapshot, REPORTS / 'decisions')
+    summary['decision_snapshot_path'] = str(decision_path)
     print(json.dumps(summary, ensure_ascii=False))
     return 0 if code == 0 else code
 

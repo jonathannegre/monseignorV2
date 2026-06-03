@@ -122,5 +122,37 @@
   "autonomy_mode": "full",
   "strategy": "momentum_concentration",
   "stop_renewal": "daily_open",
-  "notes": "Full autonomy granted 2026-05-26. Target +10% by May 30. 20%=more power. 50%=deployed everywhere."
+  "notes": "Full autonomy granted 2026-05-26. Target +10% by May 30. 20%=more power. 50%=deployed everywhere.",
+  "portfolio_construction": {
+    "max_sector_exposure_pct": 45.0,
+    "max_new_orders": 5,
+    "regime": "risk_on",
+    "allow_high_conviction_concentration": true
+  },
+  "intraday_execution": {
+    "enabled": true,
+    "timeframes": [
+      "5Min",
+      "15Min"
+    ],
+    "max_spread_bps": 20.0,
+    "avoid_first_minutes": true,
+    "stale_order_reprice_minutes": 15
+  },
+  "catalyst_agent": {
+    "news_cache_path": "data/news_cache.jsonl",
+    "negative_news_veto": true,
+    "max_news_age_hours": 72
+  },
+  "position_manager": {
+    "enabled": true,
+    "atr_trailing_multiplier": 1.5,
+    "breakeven_after_r": 1.0,
+    "partial_profit_after_r": 1.5,
+    "time_stop_bars": 8
+  },
+  "decision_replay": {
+    "enabled": true,
+    "directory": "reports/decisions"
+  }
 }

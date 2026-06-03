@@ -21,6 +21,11 @@ import urllib.request
 from collections import Counter
 from typing import Any, Iterable
 
+try:
+    from .catalyst_agent import CatalystAgent, score_catalysts_for_symbols
+except ImportError:
+    from catalyst_agent import CatalystAgent, score_catalysts_for_symbols
+
 BASE = pathlib.Path(__file__).resolve().parents[1]
 POLICY_PATH = BASE / "config" / "policy.json"
 JOURNAL = BASE / "journal" / "events.jsonl"
@@ -369,11 +374,13 @@ def scan_market_universe(
     *,
     account_cash: float | None = None,
     generated_at: str | None = None,
+    catalyst_agent: CatalystAgent | None = None,
 ) -> dict[str, Any]:
     generated_at = generated_at or dt.datetime.now(dt.timezone.utc).isoformat()
     rejected: Counter[str] = Counter()
     candidates: list[dict[str, Any]] = []
     historical_bars = historical_bars or {}
+    catalyst_scores = score_catalysts_for_symbols([str(asset.get("symbol", "")).upper() for asset in assets if asset.get("symbol")], catalyst_agent)
 
     for asset in assets:
         symbol = str(asset.get("symbol", "")).upper()
@@ -415,6 +422,9 @@ def scan_market_universe(
         score = (math.log10(max(dollar_volume, 1)) * 10) - spread_bps
         candidate_asset_type = asset_type(asset)
         technical_analysis = analyze_technicals(symbol, candidate_asset_type, historical_bars.get(symbol, []), quote)
+        catalyst_analysis = catalyst_scores.get(symbol, {"agent": "Catalyst & News Agent", "symbol": symbol, "catalyst_status": "no_verified_catalyst", "summary": "No verified catalyst", "risk_level": 0, "trade_allowed": True, "score": 5.0})
+        catalyst_score = finite_float(catalyst_analysis.get("score"), 5.0)
+        combined_score = round((finite_float(technical_analysis.get("technical_score")) * 0.45) + (catalyst_score * 0.35) + (min(score / 10.0, 10.0) * 0.20), 3)
         candidates.append(
             {
                 "symbol": symbol,
@@ -428,9 +438,10 @@ def scan_market_universe(
                 "volume": volume,
                 "dollar_volume": round(dollar_volume, 2),
                 "liquidity_score": round(score, 3),
+                "combined_score": combined_score,
                 "technical_score": technical_analysis.get("technical_score", 0),
                 "risk_reward": technical_analysis.get("risk_reward", 0),
-                "confidence": technical_analysis.get("confidence", 0),
+                "confidence": round((finite_float(technical_analysis.get("confidence")) + catalyst_score) / 2.0, 2),
                 "last_price": round(price, 4),
                 "entry": technical_analysis.get("entry", 0),
                 "stop_loss": technical_analysis.get("stop_loss", 0),
@@ -438,14 +449,15 @@ def scan_market_universe(
                 "setup": technical_analysis.get("setup"),
                 "trend": technical_analysis.get("technical_summary", "n/a"),
                 "technical_analysis": technical_analysis,
-                "catalyst_analysis": {"agent": "Catalyst & News Agent", "symbol": symbol, "catalyst_status": "no_verified_catalyst", "summary": "No verified catalyst", "risk_level": 0, "trade_allowed": True, "score": 6.0},
-                "catalyst_score": 6.0,
-                "catalyst": "No verified catalyst",
-                "action": "watch_only_no_order",
+                "catalyst_analysis": catalyst_analysis,
+                "catalyst_score": catalyst_score,
+                "catalyst_status": catalyst_analysis.get("catalyst_status"),
+                "catalyst": catalyst_analysis.get("summary", "No verified catalyst"),
+                "action": "watch_only_no_order" if catalyst_analysis.get("trade_allowed", True) else "blocked_negative_catalyst",
             }
         )
 
-    candidates.sort(key=lambda item: (item["liquidity_score"], item["dollar_volume"]), reverse=True)
+    candidates.sort(key=lambda item: (item["combined_score"], item["liquidity_score"], item["dollar_volume"]), reverse=True)
     candidates = candidates[: config.top_n]
 
     return {
@@ -508,14 +520,16 @@ def run_live_scan() -> dict[str, Any]:
 
     account = client.account()
     account_cash = finite_float(account.get("cash"))
+    news_path = BASE / "data" / "news_cache.jsonl"
+    catalyst_agent = CatalystAgent.from_json_file(news_path) if news_path.exists() else CatalystAgent()
     universe_assets = choose_asset_universe(client.assets(), config.max_universe)
     symbols = [str(asset["symbol"]).upper() for asset in universe_assets]
     bars = client.latest_daily_bars(symbols, config.feed)
     quotes = client.latest_quotes(symbols, config.feed)
-    initial = scan_market_universe(universe_assets, bars, quotes, config, account_cash=account_cash)
+    initial = scan_market_universe(universe_assets, bars, quotes, config, account_cash=account_cash, catalyst_agent=catalyst_agent)
     candidate_symbols = [item["symbol"] for item in initial.get("market_scanner", {}).get("candidates", [])]
     historical = client.historical_daily_bars(candidate_symbols, config.feed, limit=120) if candidate_symbols else {}
-    result = scan_market_universe(universe_assets, bars, quotes, config, historical_bars=historical, account_cash=account_cash)
+    result = scan_market_universe(universe_assets, bars, quotes, config, historical_bars=historical, account_cash=account_cash, catalyst_agent=catalyst_agent)
     result["account_snapshot"] = {"cash": round(account_cash, 2), "paper_endpoint": client.trading_base_url}
     return result
 
