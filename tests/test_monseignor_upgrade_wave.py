@@ -5,7 +5,7 @@ import tempfile
 import unittest
 from unittest import mock
 
-from scripts.backtester import backtest_setup, recommend_setup_rotation, walk_forward_backtest
+from scripts.backtester import backtest_setup, fetch_yahoo_daily_bars, recommend_setup_rotation, run_backtest, walk_forward_backtest
 from scripts.catalyst_agent import CatalystAgent, NewsItem, score_catalysts_for_symbols
 from scripts.decision_replay import build_decision_snapshot, write_decision_snapshot
 from scripts.intraday_execution import IntradayExecutionConfig, confirm_intraday_entry, reprice_stale_order
@@ -47,13 +47,48 @@ class BacktesterTests(unittest.TestCase):
         result = backtest_setup("etf_trend_following", bars_by_symbol, min_trades=1)
         walk = walk_forward_backtest(bars_by_symbol, setups=["etf_trend_following"], window=40, step=20)
         rotation = recommend_setup_rotation([result], min_samples=1)
+        full = run_backtest(bars_by_symbol, setups=["etf_trend_following"], min_trades=1)
 
         self.assertEqual(result["setup"], "etf_trend_following")
         self.assertGreater(result["trades"], 0)
         self.assertIn("avg_r", result)
         self.assertGreaterEqual(walk["folds"], 1)
         self.assertIn("boosted_setups", rotation)
+        self.assertEqual(full["symbols_loaded"]["SPY"], 90)
+        self.assertIn("recommendation", full)
 
+    def test_yahoo_fetcher_normalizes_adjusted_bars(self):
+        payload = {
+            "chart": {
+                "result": [
+                    {
+                        "timestamp": [1735689600, 1735776000],
+                        "indicators": {
+                            "quote": [{"open": [100, 102], "high": [104, 106], "low": [99, 101], "close": [103, 105], "volume": [1000, 1100]}],
+                            "adjclose": [{"adjclose": [51.5, 105]}],
+                        },
+                    }
+                ]
+            }
+        }
+
+        class FakeResponse:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *args):
+                return False
+
+            def read(self):
+                return json.dumps(payload).encode()
+
+        with mock.patch("urllib.request.urlopen", return_value=FakeResponse()):
+            bars = fetch_yahoo_daily_bars("AAPL", "2025-01-01", "2025-01-02")
+
+        self.assertEqual(len(bars), 2)
+        self.assertEqual(bars[0]["c"], 51.5)
+        self.assertEqual(bars[0]["o"], 50.0)
+        self.assertEqual(bars[1]["v"], 1100)
 
 class PositionAndExecutionTests(unittest.TestCase):
     def test_position_manager_promotes_stop_and_partial_profit(self):
