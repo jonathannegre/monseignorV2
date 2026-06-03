@@ -1,7 +1,7 @@
 #!/bin/bash
 # Picsou daily report - runs at 08:00 CEST, delivers via WhatsApp
 set -euo pipefail
-cd /home/hermes/projects/picsou-alpaca
+cd /home/hermes/projects/monseignor
 source .secrets/alpaca-paper.env
 
 ACCT=$(curl -s -H "APCA-API-KEY-ID: $APCA_API_KEY_ID" -H "APCA-API-SECRET-KEY: $APCA_API_SECRET_KEY" https://paper-api.alpaca.markets/v2/account)

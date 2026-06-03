@@ -22,7 +22,7 @@ import urllib.parse
 import urllib.request
 from typing import Any, Dict, List, Mapping, Optional
 
-BASE = pathlib.Path("/home/hermes/projects/picsou-alpaca")
+BASE = pathlib.Path(__file__).resolve().parents[1]
 POLICY_PATH = BASE / "config" / "policy.json"
 JOURNAL = BASE / "journal" / "events.jsonl"
 

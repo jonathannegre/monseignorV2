@@ -18,7 +18,7 @@ except ImportError:  # script execution: python3 scripts/daily_cycle.py
     from trade_validation_pipeline import append_trade_validation_journal, compose_trade_validation_pipeline
     from order_executor import execute_proposals
 
-BASE = pathlib.Path('/home/hermes/projects/picsou-alpaca')
+BASE = pathlib.Path(__file__).resolve().parents[1]
 JOURNAL = BASE / 'journal' / 'events.jsonl'
 REPORTS = BASE / 'reports'
 POLICY_PATH = BASE / 'config' / 'policy.json'

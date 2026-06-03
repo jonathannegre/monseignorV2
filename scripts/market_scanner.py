@@ -21,7 +21,7 @@ import urllib.request
 from collections import Counter
 from typing import Any, Iterable
 
-BASE = pathlib.Path("/home/hermes/projects/picsou-alpaca")
+BASE = pathlib.Path(__file__).resolve().parents[1]
 POLICY_PATH = BASE / "config" / "policy.json"
 JOURNAL = BASE / "journal" / "events.jsonl"
 REPORTS = BASE / "reports"

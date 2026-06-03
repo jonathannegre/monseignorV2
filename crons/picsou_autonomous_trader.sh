@@ -1,8 +1,8 @@
 #!/bin/bash
-# Picsou autonomous trader - runs every 15min during market hours
+# Monseignor autonomous trader - runs every 15min during market hours
 # Scans, analyzes, and executes trades autonomously
 set -euo pipefail
-cd /home/hermes/projects/picsou-alpaca
+cd /home/hermes/projects/monseignor
 set -a
 source .secrets/alpaca-paper.env
 set +a
@@ -20,7 +20,7 @@ fi
 python3 scripts/daily_cycle.py 2>&1
 
 # Auto-commit changes after each cycle
-cd /home/hermes/projects/picsou-alpaca
+cd /home/hermes/projects/monseignor
 if [ -n "$(git status --porcelain -- scripts/ config/ crons/ tests/)" ]; then
   git add scripts/ config/ crons/ tests/
   git commit -m "auto: $(date +%Y-%m-%d_%H:%M) cycle update" --quiet

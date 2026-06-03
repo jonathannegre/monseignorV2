@@ -19,7 +19,8 @@ def test_build_summary_uses_account_positions_orders_and_buying_power():
 
     market_scan = {"market_scanner": {"opportunities_found": 3, "candidates": [{"symbol": "SPY"}]}}
 
-    summary = daily_cycle.build_summary(account, market_scan=market_scan)
+    policy = {"allocated_capital_usd": 100.0, "execution_authorization": {}}
+    summary = daily_cycle.build_summary(account, policy=policy, market_scan=market_scan)
 
     cycle = summary["cycle_summary"]
     assert cycle["portfolio_value"] == 100.0
