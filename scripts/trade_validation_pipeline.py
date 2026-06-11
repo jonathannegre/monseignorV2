@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validation-only trade pipeline for Picsou.
+"""Validation-first trade pipeline for MonseignorV2.
 
 This module deliberately never submits broker orders. It composes the validation
 agents, produces auditable proposals, and keeps execution gated until a manual
@@ -127,11 +127,30 @@ def _cash_allocation(policy: Mapping[str, Any], account: Mapping[str, Any], cand
     broker_cash = _as_float(account.get("cash"))
     cash = min(broker_cash, allocation_cap) if allocation_cap > 0 else broker_cash
     buffer_usd = _as_float(policy.get("hard_rules", {}).get("minimum_cash_buffer_usd"), 5.0)
+    min_new_buy_cash = _as_float(policy.get("cash_control", {}).get("min_new_buy_cash_usd"), 50.0)
     broker_portfolio_value = _as_float(account.get("portfolio_value"), cash)
     portfolio_value = min(broker_portfolio_value, allocation_cap) if allocation_cap > 0 else broker_portfolio_value
     max_risk_pct = _as_float(policy.get("risk_mode", {}).get("max_risk_per_trade_pct"), 1.0)
     risk_budget = round(max(portfolio_value, 0.0) * max_risk_pct / 100.0, 2)
     usable_cash = max(cash - buffer_usd, 0.0)
+    if usable_cash < min_new_buy_cash and int(account.get("open_positions_count", 0) or 0) > 0:
+        return {
+            "cash": round(cash, 2),
+            "broker_cash": round(broker_cash, 2),
+            "allocated_capital_usd": round(allocation_cap, 2),
+            "minimum_cash_buffer_usd": round(buffer_usd, 2),
+            "min_new_buy_cash_usd": round(min_new_buy_cash, 2),
+            "rotation_only_mode": True,
+            "risk_budget_usd": risk_budget,
+            "suggested_notional_usd": 0.0,
+            "suggested_qty": 0.0,
+            "entry": round(max(_as_float(candidate.get("entry"), _as_float(candidate.get("last_price"))), 0.01), 4),
+            "stop_loss": round(_as_float(candidate.get("stop_loss")), 4),
+            "price_risk_per_share": 0.0,
+            "max_loss_if_stop_hit": 0.0,
+            "cash_after_order": round(cash, 2),
+            "fractional_qty": True,
+        }
     entry = max(_as_float(candidate.get("entry"), _as_float(candidate.get("last_price"))), 0.01)
     stop_loss = _as_float(candidate.get("stop_loss"))
     price_risk = abs(entry - stop_loss) if stop_loss > 0 else 0.0
@@ -235,6 +254,7 @@ def _evaluate_candidates(
             "execution_block_reason": None,
             "confidence": confidence,
             "risk_reward": risk_reward,
+            "setup": setup,
             "order_intent": {
                 "order_type": "limit",
                 "time_in_force": "day",

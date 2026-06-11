@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Picsou Alpaca Paper bracket/limit order executor.
+"""MonseignorV2 Alpaca Paper bracket/limit order executor.
 
 SAFETY INVARIANTS:
 - Only submits to paper-api.alpaca.markets (hard check).
@@ -190,9 +190,9 @@ def submit_order(proposal: Mapping[str, Any], policy: Mapping[str, Any]) -> Dict
         }
 
     response = _post_json(base + "/v2/orders", body)
-    response["_picsou_order_mode"] = "bracket" if use_bracket else "fractional_simple"
-    response["_picsou_planned_tp"] = tp
-    response["_picsou_planned_sl"] = sl
+    response["_monseignorv2_order_mode"] = "bracket" if use_bracket else "fractional_simple"
+    response["_monseignorv2_planned_tp"] = tp
+    response["_monseignorv2_planned_sl"] = sl
     return response
 
 

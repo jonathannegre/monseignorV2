@@ -11,6 +11,9 @@ try:
     from .trade_validation_pipeline import append_trade_validation_journal, compose_trade_validation_pipeline
     from .order_executor import execute_proposals
     from .decision_replay import build_decision_snapshot, write_decision_snapshot
+    from .broker_stop_auditor import live_audit as live_stop_audit, repair_missing_stops
+    from .position_rotation import plan_rotation
+    from .performance_attribution import attribute_closed_trades, extract_trade_records_from_journal
 except ImportError:  # script execution: python3 scripts/daily_cycle.py
     SCRIPT_DIR = pathlib.Path(__file__).resolve().parent
     if str(SCRIPT_DIR) not in sys.path:
@@ -19,6 +22,9 @@ except ImportError:  # script execution: python3 scripts/daily_cycle.py
     from trade_validation_pipeline import append_trade_validation_journal, compose_trade_validation_pipeline
     from order_executor import execute_proposals
     from decision_replay import build_decision_snapshot, write_decision_snapshot
+    from broker_stop_auditor import live_audit as live_stop_audit, repair_missing_stops
+    from position_rotation import plan_rotation
+    from performance_attribution import attribute_closed_trades, extract_trade_records_from_journal
 
 BASE = pathlib.Path(__file__).resolve().parents[1]
 JOURNAL = BASE / 'journal' / 'events.jsonl'
@@ -547,10 +553,21 @@ def main():
     if setup_rotation.get('updated'):
         policy = load_policy()
 
-    # Renew stop losses for positions without active stops
-    stop_renewal = renew_stop_losses(policy)
+    # Broker-visible stop audit is the V2 replacement for blind stop renewal.
+    stop_audit = live_stop_audit(policy)
+    stop_repair = {'orders_sent': 0, 'reason': 'not_needed'}
+    if stop_audit.get('critical_incident') and policy.get('broker_stop_audit', {}).get('auto_repair', True):
+        dry_repair = not bool(policy.get('execution_authorization', {}).get('authorized_by_user'))
+        stop_repair = repair_missing_stops(stop_audit, dry_run=dry_repair)
     summary = build_summary(account, policy=policy, market_scan=market_scan)
-    summary['stop_renewal'] = stop_renewal
+    summary['stop_audit'] = stop_audit
+    summary['stop_repair'] = stop_repair
+    # Keep legacy field for old report readers, but source it from the richer audit.
+    summary['stop_renewal'] = {'renewed': stop_repair.get('orders_sent', 0), 'audit': stop_audit.get('all_positions_protected')}
+    positions_for_rotation = account.get('positions', []) if isinstance(account.get('positions'), list) else []
+    candidates_for_rotation = market_scan.get('market_scanner', {}).get('candidates', []) if market_scan else []
+    summary['position_rotation'] = plan_rotation(positions_for_rotation, candidates_for_rotation, account, policy)
+    summary['performance_attribution'] = attribute_closed_trades(extract_trade_records_from_journal(JOURNAL))
     summary['adaptive_update'] = adaptation
     summary['setup_rotation_update'] = setup_rotation
 

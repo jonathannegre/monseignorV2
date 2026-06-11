@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
-# Monseignor daily WhatsApp report, user-facing only.
+# MonseignorV2 daily WhatsApp report, user-facing only.
 set -euo pipefail
-cd /home/hermes/projects/monseignor
+cd /home/hermes/projects/monseignor-v2
 
 SECRET_FILE=".secrets/alpaca-paper.env"
 if [[ ! -f "$SECRET_FILE" ]]; then
   echo "🦄 *Hermes*"
   echo "〰️〰️〰️〰️"
   echo ""
-  echo "Monseignor: credentials Alpaca Paper absents, rapport indisponible."
+  echo "MonseignorV2: credentials Alpaca Paper absents, rapport indisponible."
   exit 0
 fi
 set -a
@@ -24,7 +24,7 @@ import os
 import pathlib
 import urllib.request
 
-BASE = pathlib.Path('/home/hermes/projects/monseignor')
+BASE = pathlib.Path('/home/hermes/projects/monseignor-v2')
 policy = json.loads((BASE / 'config/policy.json').read_text())
 api_key = os.environ['APCA_API_KEY_ID']
 secret = os.environ['APCA_API_SECRET_KEY']
@@ -69,7 +69,7 @@ for o in orders[:8]:
 print('🦄 *Hermes*')
 print('〰️〰️〰️〰️')
 print('')
-print(f"Monseignor — rapport Alpaca Paper du {today.isoformat()}")
+print(f"MonseignorV2 — rapport Alpaca Paper du {today.isoformat()}")
 print('')
 print(f"Portfolio: {portfolio:.2f}$ | Cash: {cash:.2f}$ | Exposition: {exposure:.2f}$ ({expo_pct:.1f}%)")
 print(f"Performance depuis activation: {ret:+.2f}%")

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Monseignor autonomous Alpaca Paper trader. Local/silent cron; user-facing reporting is separate.
+# MonseignorV2 autonomous Alpaca Paper trader. Local/silent cron; user-facing reporting is separate.
 set -euo pipefail
-cd /home/hermes/projects/monseignor
+cd /home/hermes/projects/monseignor-v2
 
 SECRET_FILE=".secrets/alpaca-paper.env"
 if [[ ! -f "$SECRET_FILE" ]]; then
@@ -19,7 +19,7 @@ export APCA_API_BASE_URL="${APCA_API_BASE_URL:-https://paper-api.alpaca.markets}
 
 # Never run outside Alpaca Paper.
 if [[ "$APCA_API_BASE_URL" != "https://paper-api.alpaca.markets" ]]; then
-  echo "Monseignor refused: APCA_API_BASE_URL is not Alpaca Paper" >&2
+  echo "MonseignorV2 refused: APCA_API_BASE_URL is not Alpaca Paper" >&2
   exit 3
 fi
 
@@ -34,6 +34,6 @@ python3 scripts/daily_cycle.py
 # Version only deterministic code/config changes, never journal/reports/data/secrets.
 if [[ -n "$(git status --porcelain -- scripts/ config/ crons/ tests/ docs/)" ]]; then
   git add scripts/ config/ crons/ tests/ docs/
-  git commit -m "auto: monseignor cycle update $(date +%Y-%m-%d_%H:%M)" --quiet || true
+  git commit -m "auto: monseignorv2 cycle update $(date +%Y-%m-%d_%H:%M)" --quiet || true
   git push origin main --quiet 2>/dev/null || true
 fi

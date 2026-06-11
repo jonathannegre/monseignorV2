@@ -16,6 +16,16 @@ import pathlib
 from typing import Any, Iterable, Mapping
 
 TRUSTED_SOURCES = {"reuters", "bloomberg", "associated press", "ap", "dow jones", "wsj", "sec", "nasdaq", "nyse"}
+ETF_SECTOR_TERMS = {
+    "XLF": {"bank", "banks", "financial", "fed", "rates", "yield curve", "credit", "lending"},
+    "XLE": {"oil", "crude", "energy", "opec", "natural gas", "drilling"},
+    "XLK": {"technology", "semiconductor", "software", "cloud", "ai", "chips"},
+    "XLV": {"healthcare", "pharma", "biotech", "medicare", "fda"},
+    "XLP": {"consumer staples", "retail", "grocery", "food", "beverage"},
+    "IWM": {"small cap", "small-cap", "russell", "regional bank"},
+    "EEM": {"emerging markets", "china", "india", "brazil", "fx"},
+}
+GENERIC_MARKET_COMMENTARY = {"stock market today", "market today", "wall street", "stocks mixed", "futures", "indexes", "indices"}
 POSITIVE_TERMS = {
     "beat": 1.2,
     "beats": 1.2,
@@ -176,6 +186,18 @@ class CatalystAgent:
         for item in items:
             text = f"{item.headline} {item.summary}".lower()
             source = item.source.lower()
+            if symbol in ETF_SECTOR_TERMS:
+                sector_related = any(term in text for term in ETF_SECTOR_TERMS[symbol])
+                generic_commentary = any(term in text for term in GENERIC_MARKET_COMMENTARY)
+                if generic_commentary and not sector_related:
+                    # Generic market-wrap articles are useful context but should
+                    # not give several ETFs a fake high-conviction catalyst.
+                    negative += 0.10
+                    item_materiality = item.materiality if item.materiality is not None else 0.25
+                    item = dataclasses.replace(item, materiality=min(item_materiality, 0.35), relevance=min(item.relevance or 0.5, 0.45))
+                elif sector_related:
+                    positive += 0.25
+                    material_hits += 1
             if item.headline.lower() not in seen_headlines:
                 novelty_bonus += 0.15
                 seen_headlines.add(item.headline.lower())

@@ -73,7 +73,10 @@ def _compact_position(position):
         "qty": position.get("qty"),
         "side": position.get("side"),
         "market_value": position.get("market_value"),
+        "avg_entry_price": position.get("avg_entry_price"),
+        "current_price": position.get("current_price"),
         "unrealized_pl": position.get("unrealized_pl"),
+        "unrealized_plpc": position.get("unrealized_plpc"),
     }
 
 

@@ -1,5 +1,5 @@
 {
-  "project": "monseignor-alpaca-paper",
+  "project": "monseignorv2-alpaca-paper",
   "broker": "Alpaca Paper",
   "allocated_capital_usd": 10000,
   "trading_enabled": true,
@@ -50,10 +50,9 @@
     "Compliance & Kill-Switch Agent"
   ],
   "execution_authorization": {
-    "alpaca_paper_orders_after_full_pipeline": true,
-    "authorized_by_user": true,
-    "authorization_text": "Jo autorise Monseignor à passer des ordres Alpaca Paper autonomes après validation complète; paper-only, cash-only, no margin, no short, no options, no crypto.",
-    "timestamp": "2026-06-03T17:16:12",
+    "alpaca_paper_orders_after_full_pipeline": false,
+    "authorized_by_user": false,
+    "authorization_text": "Pending dedicated MonseignorV2 Alpaca Paper credentials and explicit activation. Paper-only/cash-only/no margin/no short/no options/no crypto.",
     "constraints": [
       "paper_only",
       "cash_only",
@@ -77,52 +76,26 @@
   "daily_report_time_cest": "08:00",
   "daily_report_channel": "whatsapp",
   "adaptive_meta": {
-    "last_adaptation_ts": "2026-06-11T16:00:10.023742",
+    "last_adaptation_ts": "2026-06-11T22:43:30.715372",
     "start_equity": 10000.0,
-    "high_water_mark": 10248.31,
-    "realized_return_pct": 2.48,
+    "high_water_mark": 10000.0,
+    "realized_return_pct": 0.0,
     "drawdown_pct": 0.0,
-    "progress_gap_pct": 12.52,
+    "progress_gap_pct": 15.0,
     "action": "increase_aggression_behind_target"
   },
   "setup_rotation": {
     "enabled": true,
-    "source": "rolling_expectancy_proxy",
-    "window_events": 180,
+    "source": "real_closed_trades_or_backtest_only",
     "min_samples": 8,
     "disabled_setups": [],
-    "boosted_setups": [
-      "pullback_ema21"
-    ],
-    "stats": [
-      {
-        "setup": "pullback_ema21",
-        "samples": 42,
-        "win_rate": 1.0,
-        "avg_rr": 2.21,
-        "expectancy": 2.21
-      },
-      {
-        "setup": "support_bounce",
-        "samples": 2,
-        "win_rate": 1.0,
-        "avg_rr": 2.2,
-        "expectancy": 2.2
-      },
-      {
-        "setup": "etf_trend_following",
-        "samples": 1,
-        "win_rate": 1.0,
-        "avg_rr": 2.2,
-        "expectancy": 2.2
-      }
-    ],
-    "updated_at": "2026-05-21T19:46:08.286139"
+    "boosted_setups": [],
+    "stats": []
   },
   "autonomy_mode": "full",
   "strategy": "momentum_concentration",
   "stop_renewal": "daily_open",
-  "notes": "Monseignor autonomous Alpaca Paper activation. Objective +5% by 2026-06-20 and +15% by 2026-07-14, fair-shifted from activation. Paper-only/cash-only aggressive autonomous mode.",
+  "notes": "MonseignorV2 fork: broker stop audit/repair, rotation-first capital use, hold-trim-exit-replace scoring, ETF catalyst quality filter, SEC filings enrichment, real closed-trade setup rotation, attribution, and objective-aware adaptive risk. Trading disabled until dedicated Alpaca Paper key is provided.",
   "portfolio_construction": {
     "max_sector_exposure_pct": 45.0,
     "max_new_orders": 5,
@@ -147,7 +120,12 @@
     "max_news_age_hours": 72,
     "provider": "finnhub",
     "finnhub_lookback_days": 7,
-    "finnhub_sleep_seconds": 0.25
+    "finnhub_sleep_seconds": 0.25,
+    "providers": [
+      "finnhub",
+      "sec_edgar"
+    ],
+    "etf_quality_filter": true
   },
   "position_manager": {
     "enabled": true,
@@ -178,8 +156,42 @@
     ],
     "strictly_separate_from": [
       "picsou-monolith",
-      "picsou-agents"
+      "picsou-agents",
+      "monseignor"
     ],
-    "paper_account": "monseignor-dedicated-alpaca-paper"
+    "paper_account": "monseignorv2-dedicated-alpaca-paper-pending"
+  },
+  "bot_name": "MonseignorV2",
+  "cash_control": {
+    "min_new_buy_cash_usd": 50.0,
+    "rotation_only_when_cash_below_min": true,
+    "block_micro_orders": true
+  },
+  "broker_stop_audit": {
+    "enabled": true,
+    "auto_repair": true,
+    "audit_every_cycle": true,
+    "critical_if_position_without_visible_stop": true
+  },
+  "position_rotation": {
+    "enabled": true,
+    "replace_score_margin": 1.0,
+    "score_existing_positions": true,
+    "actions": [
+      "HOLD",
+      "TRIM",
+      "EXIT",
+      "REPLACE_WITH"
+    ]
+  },
+  "performance_attribution": {
+    "enabled": true,
+    "buckets": [
+      "setup",
+      "catalyst_type",
+      "sector",
+      "regime",
+      "holding_period"
+    ]
   }
 }

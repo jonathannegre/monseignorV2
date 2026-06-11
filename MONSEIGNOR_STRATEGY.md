@@ -6,9 +6,9 @@ Target repo: https://github.com/jonathannegre/monseignor
 
 ## Fork status
 
-Monseignor starts as a fork of the Picsou Alpaca monolith, with history preserved.
-The local copy is /home/hermes/projects/monseignor and origin points to jonathannegre/monseignor.
-The first preparation pass made the code independent from the Picsou path by deriving BASE from the script location and by changing cron paths to /home/hermes/projects/monseignor.
+MonseignorV2 starts as a fork of the Picsou Alpaca monolith, with history preserved.
+The local copy is /home/hermes/projects/monseignor-v2-v2 and origin points to jonathannegre/monseignorV2.
+The first preparation pass made the code independent from the Picsou path by deriving BASE from the script location and by changing cron paths to /home/hermes/projects/monseignor-v2-v2.
 
 ## Current Picsou baseline observed
 
@@ -37,8 +37,8 @@ Implementation targets:
 - Fix stale tests so CI catches path regressions.
 
 Acceptance:
-- `python3 -m pytest -q` passes in /home/hermes/projects/monseignor.
-- Running scripts from Monseignor writes only under /home/hermes/projects/monseignor.
+- `python3 -m pytest -q` passes in /home/hermes/projects/monseignor-v2-v2.
+- Running scripts from Monseignor writes only under /home/hermes/projects/monseignor-v2-v2.
 
 ### P1 — Replace placeholder catalyst scoring with real news/earnings/macro signals
 

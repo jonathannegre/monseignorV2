@@ -28,7 +28,7 @@ The output cache is JSONL and gitignored: `data/news_cache.jsonl`.
 
 ## Autonomous run behavior
 
-`crons/picsou_autonomous_trader.sh` sources `.secrets/finnhub.env` when present. During `run_live_scan()` Monseignor:
+`crons/monseignorv2_autonomous_trader.sh` sources `.secrets/finnhub.env` when present. During `run_live_scan()` MonseignorV2:
 
 1. performs the initial technical/liquidity scan,
 2. extracts the candidate symbols,

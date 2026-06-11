@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import sys, json
-sys.path.insert(0, '/home/hermes/projects/picsou-alpaca/scripts')
+import pathlib
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 from daily_cycle import _fetch_closed_trades_from_alpaca, _build_setup_map_from_journal, _compute_setup_rotation_from_journal, load_policy
 
 # Test fetch
