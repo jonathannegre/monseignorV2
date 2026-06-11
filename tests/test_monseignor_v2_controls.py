@@ -95,15 +95,15 @@ class MonseignorV2ControlTests(unittest.TestCase):
         after_start = construct_portfolio(proposals, {'cash': 10000, 'portfolio_value': 10000, 'positions': [{'symbol': 'XLF'}]}, policy)
         self.assertFalse(after_start['launch_profile']['applied'])
 
-    def test_policy_is_warm_started_but_not_authorized_to_trade(self):
+    def test_policy_is_activated_for_competition_trading(self):
         policy = json.loads(pathlib.Path('config/policy.json').read_text())
         self.assertEqual(policy['risk_mode']['min_confidence'], 4.5)
         self.assertEqual(policy['risk_mode']['min_risk_reward'], 1.3)
-        self.assertFalse(policy['execution_authorization']['authorized_by_user'])
-        self.assertFalse(policy['execution_authorization']['alpaca_paper_orders_after_full_pipeline'])
+        self.assertTrue(policy['execution_authorization']['authorized_by_user'])
+        self.assertTrue(policy['execution_authorization']['alpaca_paper_orders_after_full_pipeline'])
         self.assertEqual(policy['setup_rotation']['stats'], [])
-        self.assertEqual(policy['fair_competition_readiness']['activation_state'], 'prepared_not_trading')
-        self.assertEqual(policy['fair_competition_readiness']['expected_cron_offset']['v2_minutes'], [7, 22, 37, 52])
+        self.assertEqual(policy['competition_objectives']['target_return_pct'], 15.0)
+        self.assertEqual(policy['competition_objectives']['starting_equity_usd'], 10000.0)
 
 
 if __name__ == '__main__':

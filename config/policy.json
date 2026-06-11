@@ -6,7 +6,7 @@
   "no_orders_before_full_pipeline": false,
   "selected_risk_mode": "C",
   "risk_mode": {
-    "name": "agressif autonome",
+    "name": "agressif autonome competition",
     "max_risk_per_trade_pct": 2.5,
     "max_total_exposure_pct": 85.0,
     "max_open_positions": 10,
@@ -50,9 +50,9 @@
     "Compliance & Kill-Switch Agent"
   ],
   "execution_authorization": {
-    "alpaca_paper_orders_after_full_pipeline": false,
-    "authorized_by_user": false,
-    "authorization_text": "Pending dedicated MonseignorV2 Alpaca Paper credentials and explicit activation. Paper-only/cash-only/no margin/no short/no options/no crypto.",
+    "alpaca_paper_orders_after_full_pipeline": true,
+    "authorized_by_user": true,
+    "authorization_text": "Jo authorized direct paper trading competition start for Picsou, MonseignorV1 and MonseignorV2 on 2026-06-11 at 23:40 CEST; first bot to +15% is kept, others eliminated.",
     "constraints": [
       "paper_only",
       "cash_only",
@@ -63,7 +63,8 @@
       "limit_or_bracket_only",
       "journal_before_execution",
       "critical_veto_chain_required"
-    ]
+    ],
+    "timestamp": "2026-06-11T23:31:28"
   },
   "max_risk_per_trade_pct": 2.5,
   "max_total_exposure_pct": 85.0,
@@ -72,9 +73,9 @@
   "min_risk_reward": 1.3,
   "autonomous_mode": true,
   "target_return_pct": 15,
-  "target_deadline": "2026-07-14",
-  "daily_report_time_cest": "08:00",
-  "daily_report_channel": "whatsapp",
+  "target_deadline": "first_bot_to_15pct_wins",
+  "daily_report_time_cest": "07:00",
+  "daily_report_channel": "single_competition_whatsapp_report",
   "adaptive_meta": {
     "last_adaptation_ts": "2026-06-11T22:43:30.715372",
     "start_equity": 10000.0,
@@ -147,37 +148,18 @@
     "directory": "reports/decisions"
   },
   "competition_objectives": {
-    "start_at": null,
+    "competition": "Picsou_vs_MonseignorV1_vs_MonseignorV2",
+    "start_at": "2026-06-11T23:40:00+02:00",
     "starting_equity_usd": 10000.0,
-    "fair_shift_basis": "same objective windows as MonseignorV1, shifted from MonseignorV2 first real fill/activation",
-    "objectives": [
-      {
-        "name": "+5%",
-        "target_return_pct": 5.0,
-        "deadline": "2026-06-20"
-      },
-      {
-        "name": "+15%",
-        "target_return_pct": 15.0,
-        "deadline": "2026-07-14"
-      }
-    ],
-    "strictly_separate_from": [
-      "picsou-monolith",
-      "picsou-agents",
-      "monseignor"
-    ],
-    "paper_account": "monseignorv2-dedicated-alpaca-paper-verified-not-activated",
-    "benchmark_bot": "MonseignorV1",
-    "benchmark_repo": "/home/hermes/projects/monseignor",
-    "comparison_clock": {
-      "calendar_view": true,
-      "elapsed_from_first_fill_view": true,
-      "first_fill_source_priority": [
-        "alpaca_order_history",
-        "local_journal"
-      ]
-    }
+    "target_return_pct": 15.0,
+    "target_equity_usd": 11500.0,
+    "win_condition": "first_to_reach_or_exceed_15pct_return",
+    "elimination_rule": "non_winners_to_be_removed_after_winner_confirmed_by_report",
+    "competitors": [
+      "Picsou",
+      "MonseignorV1",
+      "MonseignorV2"
+    ]
   },
   "bot_name": "MonseignorV2",
   "cash_control": {
@@ -235,8 +217,18 @@
       "execution authorization"
     ],
     "expected_cron_offset": {
-      "v1_minutes": [0, 15, 30, 45],
-      "v2_minutes": [7, 22, 37, 52],
+      "v1_minutes": [
+        0,
+        15,
+        30,
+        45
+      ],
+      "v2_minutes": [
+        7,
+        22,
+        37,
+        52
+      ],
       "reason": "Même cadence 15 min, mais décalée pour éviter les fills simultanés."
     },
     "day_one_controls": {
