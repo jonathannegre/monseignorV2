@@ -5,7 +5,10 @@ from scripts.position_rotation import plan_rotation, score_position
 from scripts.performance_attribution import attribute_closed_trades
 from scripts.sec_filings_feed import classify_filing, normalize_filing
 from scripts.catalyst_agent import CatalystAgent, NewsItem
+from scripts.portfolio_constructor import construct_portfolio
 import datetime as dt
+import json
+import pathlib
 
 
 class MonseignorV2ControlTests(unittest.TestCase):
@@ -60,6 +63,47 @@ class MonseignorV2ControlTests(unittest.TestCase):
         buckets = {row['bucket']: row for row in result['buckets']}
         self.assertEqual(buckets['setup:pullback_ema21']['trades'], 2)
         self.assertEqual(buckets['sector:Tech']['total_pnl_usd'], 15)
+
+    def test_launch_profile_caps_first_cycle_but_not_existing_portfolio(self):
+        proposals = []
+        for idx, symbol in enumerate(['NVDA', 'XLF', 'XLE', 'MSFT', 'AMD']):
+            proposals.append({
+                'symbol': symbol,
+                'confidence': 8 - idx * 0.1,
+                'risk_reward': 2.0,
+                'catalyst_score': 8,
+                'order_intent': {'qty': 20, 'limit_price': 100},
+            })
+        policy = {
+            'autonomous_mode': True,
+            'risk_mode': {'max_total_exposure_pct': 85},
+            'portfolio_construction': {
+                'max_new_orders': 5,
+                'max_sector_exposure_pct': 100,
+                'launch_profile': {
+                    'enabled': True,
+                    'max_new_orders_first_cycle': 3,
+                    'max_total_exposure_pct_first_cycle': 80,
+                },
+            },
+        }
+        first = construct_portfolio(proposals, {'cash': 10000, 'portfolio_value': 10000, 'positions': []}, policy)
+        self.assertTrue(first['launch_profile']['applied'])
+        self.assertLessEqual(first['selected_count'], 3)
+        self.assertLessEqual(sum(p['requested_notional_usd'] for p in first['selected_proposals']), 8000)
+
+        after_start = construct_portfolio(proposals, {'cash': 10000, 'portfolio_value': 10000, 'positions': [{'symbol': 'XLF'}]}, policy)
+        self.assertFalse(after_start['launch_profile']['applied'])
+
+    def test_policy_is_warm_started_but_not_authorized_to_trade(self):
+        policy = json.loads(pathlib.Path('config/policy.json').read_text())
+        self.assertEqual(policy['risk_mode']['min_confidence'], 4.5)
+        self.assertEqual(policy['risk_mode']['min_risk_reward'], 1.3)
+        self.assertFalse(policy['execution_authorization']['authorized_by_user'])
+        self.assertFalse(policy['execution_authorization']['alpaca_paper_orders_after_full_pipeline'])
+        self.assertEqual(policy['setup_rotation']['stats'], [])
+        self.assertEqual(policy['fair_competition_readiness']['activation_state'], 'prepared_not_trading')
+        self.assertEqual(policy['fair_competition_readiness']['expected_cron_offset']['v2_minutes'], [7, 22, 37, 52])
 
 
 if __name__ == '__main__':

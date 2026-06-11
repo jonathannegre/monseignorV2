@@ -102,7 +102,15 @@
     "regime": "risk_on",
     "allow_high_conviction_concentration": true,
     "resize_to_caps": true,
-    "min_resized_notional_usd": 100.0
+    "min_resized_notional_usd": 100.0,
+    "launch_profile": {
+      "enabled": true,
+      "name": "warm_start_controlled",
+      "applies_until_first_position_or_hours": 48,
+      "max_new_orders_first_cycle": 3,
+      "max_total_exposure_pct_first_cycle": 80.0,
+      "reason": "Rendre MonseignorV2 comparable à MonseignorV1 dès les premières heures sans utiliser de margin/short et sans réimporter les stats setup_rotation suspectes."
+    }
   },
   "intraday_execution": {
     "enabled": true,
@@ -139,9 +147,9 @@
     "directory": "reports/decisions"
   },
   "competition_objectives": {
-    "start_at": "2026-06-03T17:16:12",
+    "start_at": null,
     "starting_equity_usd": 10000.0,
-    "fair_shift_basis": "same objective windows as the Alpaca monolith, shifted from Monseignor activation",
+    "fair_shift_basis": "same objective windows as MonseignorV1, shifted from MonseignorV2 first real fill/activation",
     "objectives": [
       {
         "name": "+5%",
@@ -159,7 +167,17 @@
       "picsou-agents",
       "monseignor"
     ],
-    "paper_account": "monseignorv2-dedicated-alpaca-paper-pending"
+    "paper_account": "monseignorv2-dedicated-alpaca-paper-verified-not-activated",
+    "benchmark_bot": "MonseignorV1",
+    "benchmark_repo": "/home/hermes/projects/monseignor",
+    "comparison_clock": {
+      "calendar_view": true,
+      "elapsed_from_first_fill_view": true,
+      "first_fill_source_priority": [
+        "alpaca_order_history",
+        "local_journal"
+      ]
+    }
   },
   "bot_name": "MonseignorV2",
   "cash_control": {
@@ -193,5 +211,41 @@
       "regime",
       "holding_period"
     ]
+  },
+  "fair_competition_readiness": {
+    "enabled": true,
+    "mode": "aggressive_but_better_controlled",
+    "warm_start_from": "MonseignorV1 policy thresholds and universe only",
+    "copied_from_v1": [
+      "risk_mode.max_risk_per_trade_pct",
+      "risk_mode.max_total_exposure_pct",
+      "risk_mode.max_open_positions",
+      "risk_mode.min_confidence",
+      "risk_mode.min_risk_reward",
+      "market_scanner",
+      "portfolio_construction.max_sector_exposure_pct",
+      "portfolio_construction.max_new_orders",
+      "catalyst_agent.finnhub_lookback_days"
+    ],
+    "not_copied_from_v1": [
+      "setup_rotation.stats",
+      "setup_rotation.boosted_setups",
+      "active positions",
+      "open orders",
+      "execution authorization"
+    ],
+    "expected_cron_offset": {
+      "v1_minutes": [0, 15, 30, 45],
+      "v2_minutes": [7, 22, 37, 52],
+      "reason": "Même cadence 15 min, mais décalée pour éviter les fills simultanés."
+    },
+    "day_one_controls": {
+      "max_new_positions_first_cycle": 3,
+      "max_exposure_first_cycle_pct": 80.0,
+      "stop_audit_required": true,
+      "cash_gate_required": true,
+      "rotation_required_when_cash_low": true
+    },
+    "activation_state": "prepared_not_trading"
   }
 }

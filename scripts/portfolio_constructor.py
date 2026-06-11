@@ -61,6 +61,40 @@ def _conviction(proposal: Mapping[str, Any]) -> float:
     return round(confidence * 0.55 + min(rr, 4.0) * 1.25 + catalyst * 0.2, 4)
 
 
+def _has_existing_positions(account: Mapping[str, Any]) -> bool:
+    positions = account.get("positions", [])
+    return isinstance(positions, list) and len(positions) > 0
+
+
+def _apply_launch_profile(
+    max_new_orders: int,
+    regime_budget_pct: float,
+    account: Mapping[str, Any],
+    cfg: Mapping[str, Any],
+) -> tuple[int, float, dict[str, Any]]:
+    """Cap first-cycle aggressiveness while keeping V2 comparable to V1.
+
+    V2 warm-starts from V1 thresholds, but on the first activation cycle it should
+    not spray every candidate at once. This keeps day-one comparison fair:
+    aggressive enough to compete, controlled enough to avoid an accidental
+    all-in first pass before stop audit/rotation have real positions to manage.
+    """
+    profile = cfg.get("launch_profile", {}) if isinstance(cfg.get("launch_profile"), Mapping) else {}
+    meta: dict[str, Any] = {"enabled": bool(profile.get("enabled", False)), "applied": False}
+    if not profile.get("enabled", False) or _has_existing_positions(account):
+        return max_new_orders, regime_budget_pct, meta
+
+    capped_orders = min(max_new_orders, int(profile.get("max_new_orders_first_cycle", max_new_orders) or max_new_orders))
+    capped_exposure = min(regime_budget_pct, _f(profile.get("max_total_exposure_pct_first_cycle"), regime_budget_pct))
+    meta.update({
+        "applied": True,
+        "name": profile.get("name", "launch_profile"),
+        "max_new_orders": capped_orders,
+        "max_total_exposure_pct": capped_exposure,
+    })
+    return capped_orders, capped_exposure, meta
+
+
 def construct_portfolio(proposals: list[Mapping[str, Any]], account: Mapping[str, Any], policy: Mapping[str, Any]) -> dict[str, Any]:
     cfg = policy.get("portfolio_construction", {}) if isinstance(policy.get("portfolio_construction"), Mapping) else {}
     portfolio_value = max(_f(account.get("portfolio_value"), _f(account.get("cash"))), 1.0)
@@ -71,6 +105,7 @@ def construct_portfolio(proposals: list[Mapping[str, Any]], account: Mapping[str
     min_resized_notional = _f(cfg.get("min_resized_notional_usd"), 50.0)
     regime = str(cfg.get("regime", "risk_on" if policy.get("autonomous_mode") else "neutral"))
     regime_budget_pct = {"risk_off": 35.0, "neutral": 65.0, "risk_on": _f(policy.get("risk_mode", {}).get("max_total_exposure_pct"), 85.0)}.get(regime, 65.0)
+    max_new_orders, regime_budget_pct, launch_profile = _apply_launch_profile(max_new_orders, regime_budget_pct, account, cfg)
     total_budget = min(cash, portfolio_value * regime_budget_pct / 100.0)
     sector_cap = portfolio_value * max_sector_pct / 100.0
 
@@ -123,4 +158,5 @@ def construct_portfolio(proposals: list[Mapping[str, Any]], account: Mapping[str
         "rejected_proposals": rejected,
         "sector_usage_usd": {k: round(v, 2) for k, v in sorted(sector_usage.items())},
         "cash_redeployment": "replace_low_expectancy_positions_when_candidate_conviction_is_higher",
+        "launch_profile": launch_profile,
     }

@@ -36,10 +36,18 @@ Implemented V2 controls:
 8. Objective-aware risk
 - Policy keeps objective metadata but resets activation state for a dedicated MonseignorV2 paper account.
 
-Activation checklist when Jo provides keys:
-- Store Alpaca credentials in `.secrets/alpaca-paper.env` chmod 600.
-- Force Alpaca Paper cash-only/no-shorting account configuration.
+9. Fair competition warm-start
+- V2 now copies MonseignorV1's operational thresholds and universe shape, so it can compete from the first hours instead of starting too conservatively.
+- It intentionally does not copy V1's suspect `setup_rotation` proxy stats or boosted setups.
+- The first activation cycle is capped by `portfolio_construction.launch_profile`: at most 3 new positions and 80% exposure, then normal V1-comparable limits resume once positions exist.
+- Intended schedule is same 15-minute cadence as V1 but offset to minutes 7/22/37/52, while V1 remains on 0/15/30/45. This avoids simultaneous fills without creating a frequency handicap.
+- `scripts/competition_readiness.py` is a read-only smoke report for policy/account/cron-offset readiness.
+
+Activation checklist when Jo provides the top départ:
+- Keep Alpaca credentials in `.secrets/alpaca-paper.env` chmod 600.
+- Force Alpaca Paper cash-only/no-shorting account configuration if still margin-configured.
 - Run `python3 -m pytest -q`.
 - Run `python3 scripts/check_alpaca_account.py`.
+- Run `python3 scripts/competition_readiness.py`.
 - Run `python3 scripts/order_executor.py` in dry-run mode.
-- Only then flip `execution_authorization.authorized_by_user` and `alpaca_paper_orders_after_full_pipeline` to true.
+- Only then flip `execution_authorization.authorized_by_user` and `alpaca_paper_orders_after_full_pipeline` to true and schedule crons at the V2 offset.
