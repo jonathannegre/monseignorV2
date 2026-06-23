@@ -77,13 +77,13 @@
   "daily_report_time_cest": "07:00",
   "daily_report_channel": "single_competition_whatsapp_report",
   "adaptive_meta": {
-    "last_adaptation_ts": "2026-06-22T15:40:54.675309",
+    "last_adaptation_ts": "2026-06-23T15:55:23.056377",
     "start_equity": 10000.0,
     "high_water_mark": 10306.05,
-    "realized_return_pct": 3.06,
-    "drawdown_pct": 0.0,
-    "progress_gap_pct": 11.94,
-    "action": "increase_aggression_behind_target"
+    "realized_return_pct": 1.15,
+    "drawdown_pct": -1.86,
+    "progress_gap_pct": 13.85,
+    "action": "hold"
   },
   "setup_rotation": {
     "enabled": true,
